@@ -12,7 +12,7 @@
 /* runs main loop accepting input from user */
 int input_loop(FILE *fp, const char *pathname);
 /* fills display buffer from file */
-int fill_buffer(FILE *fp, int startOffset, char *displaybuf);
+int fill_buffer(FILE *fp, int startOffset, int lncount, char *displaybuf);
 /* prints buffer and escapes special characters */
 int print_buffer(char *displaybuf, const char *pathname, int lineNum, int lncount);
 
@@ -101,9 +101,10 @@ int input_loop(FILE *fp, const char *pathname) {
 			curCols = COLS;
 			free(displaybuf);
 			displaybuf = calloc(curLines*curCols, sizeof(char));
+			clear();			
 		}
 	
-		if(fill_buffer(fp, startOffset, displaybuf) != 1) {
+		if(fill_buffer(fp, startOffset, lncount, displaybuf) != 1) {
 			return -1;
 		}
 		if(print_buffer(displaybuf, pathname, curLine, lncount) != 1) {
@@ -113,7 +114,16 @@ int input_loop(FILE *fp, const char *pathname) {
 		input = getch();
 		if(input == 106) {
 			/* going down */
-			if(curLine + (LINES - 1) <= lncount + 1) {
+			/* check if any lines from file require two lines to print */
+			int priv = 1;
+			/* DANGER: this is just bound to cause an issue but wth */
+			for(int j = curLine; j < lncount; j++) {
+				if(charInLine[j] > COLS) {
+					priv++;
+				}
+			}
+
+			if(curLine + (LINES - 1) <= lncount + priv) {
 				startOffset += charInLine[curLine - 1];
 				curLine++;
 			}
@@ -138,7 +148,7 @@ int input_loop(FILE *fp, const char *pathname) {
 	return 1;
 }
 
-int fill_buffer(FILE *fp, int startOffset, char *displaybuf) {
+int fill_buffer(FILE *fp, int startOffset, int lncount, char *displaybuf) {
 	int curLine = 0, i = 0, charCount = 0, check = 0;
 	while(curLine < LINES + 1) {
 		check = getc(fp);
@@ -158,16 +168,21 @@ int fill_buffer(FILE *fp, int startOffset, char *displaybuf) {
 }
 
 int print_buffer(char *displaybuf, const char *pathname, int lineNum, int lncount) {
-	clear();
+	move(0, 0);
 	printw(displaybuf);
-	refresh();
+	
 	/* add footer */
 	char footer[COLS];
-	snprintf(footer, COLS, " File: %s  Lines %d-%d of %d  peep 0.1 (press q to quit)", pathname, lineNum, lineNum + (LINES - 3), lncount);
+	int outof = lineNum + (LINES - 3);
+	if (outof > lncount) {
+		outof = lncount;
+	}
+	snprintf(footer, COLS, " File: %s  Lines %d-%d of %d  peep 0.1 (press q to quit)", pathname, lineNum, outof, lncount);
 	move(LINES - 1, 0);
 	attron(A_STANDOUT);
 	printw(footer);
 	attroff(A_STANDOUT);
+
 	refresh();
 	return 1;
 }

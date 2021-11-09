@@ -1,2 +1,2 @@
-./peep
-./.oldpeep.c
+# Ignore peep executable
+peep
