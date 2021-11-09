@@ -89,6 +89,11 @@ int input_loop(FILE *fp, const char *pathname) {
 	int input = 0;
 	/* main loop */
 	while(1) {
+		/* clear buffer */		
+		for(int j = 0; j < curLines*curCols; j++) {
+			displaybuf[j] = 0;
+		}
+
 		/* read file contents between scope and store
 		in displaybuf */
 		if(is_term_resized(curLines, curCols)) {
@@ -98,8 +103,12 @@ int input_loop(FILE *fp, const char *pathname) {
 			displaybuf = calloc(curLines*curCols, sizeof(char));
 		}
 	
-		int ret = fill_buffer(fp, startOffset, displaybuf);
-		ret = print_buffer(displaybuf, pathname, curLine, lncount);
+		if(fill_buffer(fp, startOffset, displaybuf) != 1) {
+			return -1;
+		}
+		if(print_buffer(displaybuf, pathname, curLine, lncount) != 1) {
+			return -1;
+		}
 		
 		input = getch();
 		if(input == 106) {
@@ -118,7 +127,6 @@ int input_loop(FILE *fp, const char *pathname) {
 		}
 		else if(input == 113) {
 			/* quit process */
-			clear();
 			break;
 		}
 
@@ -155,7 +163,7 @@ int print_buffer(char *displaybuf, const char *pathname, int lineNum, int lncoun
 	refresh();
 	/* add footer */
 	char footer[COLS];
-	snprintf(footer, COLS, " File: %s  Lines %d-%d of %d  peep version 0.1 (press q to quit)", pathname, lineNum, lineNum + (LINES - 3), lncount);
+	snprintf(footer, COLS, " File: %s  Lines %d-%d of %d  peep 0.1 (press q to quit)", pathname, lineNum, lineNum + (LINES - 3), lncount);
 	move(LINES - 1, 0);
 	attron(A_STANDOUT);
 	printw(footer);
